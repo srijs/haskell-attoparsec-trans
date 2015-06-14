@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                attoparsec-trans
-version:             0.1.0.1
+version:             0.1.0.2
 synopsis:            Interleaved effects for attoparsec parsers
 -- description:         
 homepage:            https://github.com/srijs/haskell-attoparsec-trans
