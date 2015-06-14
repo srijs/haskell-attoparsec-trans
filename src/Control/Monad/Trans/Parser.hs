@@ -61,8 +61,7 @@ instance Monad m => Monad (ParserT i m) where
     where
       rec f (FailM i s)  = return (FailM i s)
       rec f (DoneM i r)  = runParserT (f r) i
-      rec f (PartialM p) = return . PartialM . ParserT $
-                             \i -> runParserT p i >>= rec f
+      rec f (PartialM p) = return . PartialM $ p >>= f
 
 instance MonadTrans (ParserT i) where
   lift mr = ParserT $ \i -> mr >>= return . DoneM i
@@ -91,10 +90,10 @@ runParserTWith mi p = ParserT $ \i -> runParserT p i >>= feedMWith mi
 -- * Result Conversion
 
 failResultM :: Monad m => ResultM i m r -> m r
-failResultM r = either fail return (eitherResultM r)
+failResultM = either fail return . eitherResultM
 
 zeroResultM :: MonadPlus m => ResultM i m r -> m r
-zeroResultM r = maybe mzero return (maybeResultM r)
+zeroResultM = maybe mzero return . maybeResultM
 
 maybeResultM :: ResultM i m r -> Maybe r
 maybeResultM (DoneM _ r) = Just r
