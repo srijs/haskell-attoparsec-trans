@@ -62,6 +62,7 @@ instance Monad m => Monad (ParserT i m) where
       rec f (FailM i s)  = return (FailM i s)
       rec f (DoneM i r)  = runParserT (f r) i
       rec f (PartialM p) = return . PartialM $ p >>= f
+  fail s = ParserT $ \i -> return $ FailM i s
 
 instance MonadTrans (ParserT i) where
   lift mr = ParserT $ \i -> mr >>= return . DoneM i
