@@ -7,6 +7,9 @@ module Control.Monad.Trans.Parser
   , feedM, feedMWith
   , runParserTOnly
   , runParserTWith
+  -- ** Merging transformers
+  , runStateParserT
+  , runWriterParserT
   -- ** Result conversion
   , failResultM
   , zeroResultM
@@ -16,12 +19,14 @@ module Control.Monad.Trans.Parser
 
 import Data.Attoparsec.Combinator (feed)
 import Data.Attoparsec.Internal.Types (IResult(..))
-import Data.Monoid (Monoid, mempty, (<>))
+import Data.Monoid (Monoid, mempty, mappend, (<>))
 
 import Control.Applicative (Applicative, pure, (<*>))
 import Control.Monad (MonadPlus, mzero, ap)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Trans.State (StateT, runStateT)
+import Control.Monad.Trans.Writer (WriterT, runWriterT)
 
 -- * Parser Types
 
@@ -87,6 +92,20 @@ runParserTOnly p i = runParserT p i >>= return . eitherResultM
 
 runParserTWith :: (Monad m, Monoid i, Eq i) => m i -> ParserT i m r -> ParserT i m r
 runParserTWith mi p = ParserT $ \i -> runParserT p i >>= feedMWith mi
+
+-- * Merging transformers
+
+runStateParserT :: Monad m => ParserT i (StateT r m) () -> r -> ParserT i m r
+runStateParserT p r = ParserT $ \i -> runStateT (runParserT p i) r >>= return . rec
+  where rec (DoneM i (), r')  = DoneM i r'
+        rec (FailM i s, _)    = FailM i s
+        rec (PartialM p', r') = PartialM $ runStateParserT p' r'
+
+runWriterParserT :: (Monad m, Monoid r) => ParserT i (WriterT r m) () -> ParserT i m r
+runWriterParserT p = ParserT $ \i -> runWriterT (runParserT p i) >>= return . rec
+  where rec (DoneM i (), r)  = DoneM i r
+        rec (FailM i s, _)   = FailM i s
+        rec (PartialM p', r) = PartialM . fmap (mappend r) $ runWriterParserT p'
 
 -- * Result Conversion
 
